@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState } from "react";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth } from "@/utils/FirebaseConfig";
-import { useRouter } from "expo-router";
+import { useNavigation } from "@react-navigation/native";
 
 interface AuthContextInterface {
     login: (email: string, password: string) => Promise<boolean>;
@@ -14,51 +14,43 @@ interface AuthContextInterface {
 const AuthContext = createContext<AuthContextInterface | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const router = useRouter();
+    const navigation = useNavigation();
     const [user, setUser] = useState<any>(null);
-    
-    const login = async (email: string, password: string): Promise<boolean> => {
+
+    const login = async (email: string, password: string) => {
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             setUser(userCredential.user);
             return true;
         } catch (error) {
-            console.error("Login error:", error);
+            console.error("Error al iniciar sesión:", error);
             return false;
         }
     };
 
-    const register = async (userData: any): Promise<boolean> => {
+    const register = async (userData: any) => {
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
             setUser(userCredential.user);
             return true;
         } catch (error) {
-            console.error("Registration error:", error);
+            console.error("Error al registrar usuario:", error);
             return false;
         }
     };
 
-    const logout = async (): Promise<void> => {
+    const logout = async () => {
         try {
             await signOut(auth);
             setUser(null);
-            router.push("/home");
+            navigation.navigate("home" as never); // Asegúrate de que "Login" es una pantalla válida en tu navegación
         } catch (error) {
-            console.error("Logout error:", error);
+            console.error("Error al cerrar sesión:", error);
         }
     };
 
-    const updateUser = async (userData: any): Promise<void> => {
-        setUser((prev: any) => ({ ...prev, ...userData }));
-    };
-
-    const updateRole = async (role: "client" | "chef" | "cashier"): Promise<void> => {
-        setUser((prev: any) => ({ ...prev, role }));
-    };
-
     return (
-        <AuthContext.Provider value={{ login, register, logout, updateUser, updateRole }}>
+        <AuthContext.Provider value={{ login, register, logout, updateUser: async () => {}, updateRole: async () => {} }}>
             {children}
         </AuthContext.Provider>
     );
