@@ -1,0 +1,95 @@
+import React, { useState } from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
+import { auth } from "@/utils/FirebaseConfig";
+import { signOut } from "firebase/auth";
+import { useRouter } from "expo-router";
+
+export default function HomeScreen() {
+    const router = useRouter();
+    const [isFlashing, setIsFlashing] = useState(false);
+
+    const handleLogout = async () => {
+        setIsFlashing(true);
+        setTimeout(() => setIsFlashing(false), 500); // Parpadea
+        console.log("Botón presionado");
+
+        await signOut(auth);
+        router.replace("/auth/Authentication"); // Redirige al login
+    };
+
+    const goToProducts = () => {
+        setIsFlashing(true);
+        setTimeout(() => setIsFlashing(false), 500); // Parpadea
+        console.log("Botón presionado");
+
+        router.push("/menuCashier/CRUDProducts/ProductListScreen");
+    };
+
+    return (
+        <View style={styles.container}>
+        <Text style={styles.title}>Bienvenido, Administrador</Text>
+
+        <Pressable style={[styles.button, isFlashing && styles.flash]}  onPress={goToProducts}>
+            <Text style={styles.buttonText}>📋 Ver productos</Text>
+        </Pressable>
+
+        <Pressable 
+            style={[styles.button, styles.logoutButton]} 
+            onPress={handleLogout}>
+            <Text style={[styles.buttonText, styles.logoutText]}>🔒 Cerrar sesión</Text>
+        </Pressable>
+        </View>
+    );
+}
+
+const COLORS = {
+    primary: "#a0312e",
+    secondary: "#b74b46",
+    accent: "#cf665e",
+    lightAccent: "#e78076",
+    background: "#fff",
+    inputBackground: "#fff5f4",
+    text: "#333",
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: "#fff5f4",
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 20,
+    },
+    title: {
+        fontSize: 26,
+        fontWeight: "bold",
+        marginBottom: 30,
+        color: "#a0312e",
+        textAlign: "center",
+    },
+    button: {
+        backgroundColor: COLORS.background,
+        paddingVertical: 14,
+        paddingHorizontal: 30,
+        borderRadius: 12,
+        borderWidth: 0,
+        borderColor: COLORS.secondary,
+        marginVertical: 10,
+        width: "80%",
+        alignItems: "center",
+    },
+    buttonText: {
+        color: COLORS.text,
+        fontSize: 16,
+        fontWeight: "600",
+    },
+    logoutButton: {
+        backgroundColor: COLORS.primary,
+    },
+    logoutText: {
+        color: "#fff",
+    },
+    flash: {
+        backgroundColor: "#ff9b8e", // Color que parpadea
+    },
+});
