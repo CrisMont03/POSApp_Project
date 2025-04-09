@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     imageHorizontal: {
-        width: 300,
+        width: 130,
         height: 200,
         borderRadius: 10,
         resizeMode: "cover",
