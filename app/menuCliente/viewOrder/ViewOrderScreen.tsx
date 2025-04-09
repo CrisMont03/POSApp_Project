@@ -1,154 +1,158 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from "react-native";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db, auth } from "@/utils/FirebaseConfig";
+import React from "react";
+import { View, Text, StyleSheet, FlatList, Pressable } from "react-native";
+import { useLocalSearchParams } from "expo-router";
+import { BadgeCheck, Clock, CalendarDays, ShoppingCart } from "lucide-react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
-const STATUS_STEPS = [
-  "Pedido",
-  "Cocinando",
-  "Listo para recoger",
-  "Entregado",
-  "Listo para pagar",
-];
+const COLORS = {
+    primary: "#a0312e",
+    darkText: "#333",
+    background: "#fff5f4",
+    cardBackground: "#fff",
+};
 
 export default function ViewOrderScreen() {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const user = auth.currentUser;
+    const { order } = useLocalSearchParams();
+    const parsedOrder = JSON.parse(order as string);
+    const router = useRouter();
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
+    const getStatusIcon = (status: string) => {
+        switch (status.toLowerCase()) {
+            case "entregado":
+                return <BadgeCheck size={20} color={COLORS.primary} />;
+            case "pendiente":
+                return <Clock size={20} color="#ffb300" />;
+            default:
+                return <ShoppingCart size={20} color={COLORS.primary} />;
+        }
+    };
 
-  const fetchOrders = async () => {
-    if (!user) return;
-    try {
-      const q = query(collection(db, "cart"), where("userId", "==", user.uid));
-      const querySnapshot = await getDocs(q);
-      const data: any[] = [];
-      querySnapshot.forEach((doc) => {
-        data.push({ id: doc.id, ...doc.data() });
-      });
-      setOrders(data);
-    } catch (error) {
-      console.error("Error fetching orders: ", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getStatusStep = (status: string) => STATUS_STEPS.indexOf(status);
-
-  const renderProgressBar = (status: string) => {
-    const currentStep = getStatusStep(status);
     return (
-      <View style={styles.progressContainer}>
-        {STATUS_STEPS.map((step, index) => (
-          <View key={step} style={styles.stepContainer}>
-            <View
-              style={[
-                styles.circle,
-                { backgroundColor: index <= currentStep ? "#a0312e" : "#ccc" },
-              ]}
+        <View style={styles.container}>
+            <Pressable style={styles.backButton} onPress={() => router.back()}>
+                <Ionicons name="arrow-back" size={24} color="#a0312e" />
+                <Text style={styles.backText}>Volver</Text>
+            </Pressable>
+
+            <View style={styles.header}>
+                <Ionicons name="document-text-outline" size={30} color={COLORS.primary} style={styles.headerIcon} />
+                <Text style={styles.title}>Pedido</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+                {getStatusIcon(parsedOrder.status)}
+                <Text style={styles.infoText}>Estado: {parsedOrder.status}</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+                <CalendarDays size={20} color={COLORS.primary} />
+                <Text style={styles.infoText}>
+                    {new Date(parsedOrder.timestamp.seconds * 1000).toLocaleString()}
+                </Text>
+            </View>
+
+            <FlatList
+                data={parsedOrder.items}
+                keyExtractor={(_, index) => index.toString()}
+                contentContainerStyle={{ paddingTop: 10 }}
+                renderItem={({ item }) => (
+                    <View style={styles.itemCard}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.itemName}>{item.name}</Text>
+                            <Text style={styles.itemQuantity}>Cantidad: {item.quantity}</Text>
+                        </View>
+                        <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
+                    </View>
+                )}
+                ListEmptyComponent={
+                    <Text style={styles.emptyText}>
+                        Este pedido no tiene productos.
+                    </Text>
+                }
             />
-            <Text style={styles.stepLabel}>{step}</Text>
-            {index < STATUS_STEPS.length - 1 && (
-              <View
-                style={[
-                  styles.line,
-                  { backgroundColor: index < currentStep ? "#a0312e" : "#ccc" },
-                ]}
-              />
-            )}
-          </View>
-        ))}
-      </View>
-    );
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#a0312e" />
-      </View>
-    );
-  }
-
-  return (
-    <FlatList
-      data={orders}
-      keyExtractor={(item) => item.id}
-      contentContainerStyle={{ padding: 20 }}
-      renderItem={({ item }) => (
-        <View style={styles.orderCard}>
-          <Text style={styles.orderTitle}>Pedido: {item.id}</Text>
-          <Text style={styles.orderSubtitle}>Estado actual: {item.status}</Text>
-          <Text style={styles.timestamp}>
-            Fecha: {new Date(item.timestamp?.toDate?.()).toLocaleString()}
-          </Text>
-          {renderProgressBar(item.status)}
         </View>
-      )}
-    />
-  );
+    );
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  orderCard: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 16,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  orderTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#a0312e",
-    marginBottom: 5,
-  },
-  orderSubtitle: {
-    fontSize: 16,
-    color: "#333",
-    marginBottom: 5,
-  },
-  timestamp: {
-    fontSize: 14,
-    color: "#555",
-    marginBottom: 10,
-  },
-  progressContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-  },
-  stepContainer: {
-    alignItems: "center",
-    flexDirection: "row",
-  },
-  circle: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    margin: 4,
-  },
-  stepLabel: {
-    fontSize: 10,
-    color: "#333",
-    marginRight: 6,
-  },
-  line: {
-    height: 2,
-    width: 20,
-  },
+    container: {
+        flex: 1,
+        backgroundColor: COLORS.background,
+        padding: 20,
+        paddingTop: 50,
+    },
+    backButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 10,
+    },
+    backText: {
+        marginLeft: 6,
+        color: COLORS.primary,
+        fontSize: 16,
+        fontWeight: "500",
+    },
+    header: {
+        backgroundColor: COLORS.primary,
+        padding: 20,
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 20,
+        borderRadius: 10
+    },
+    title: {
+        fontSize: 26,
+        fontWeight: "700",
+
+        color: COLORS.cardBackground,
+    },
+    infoRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 8,
+    },
+    infoText: {
+        marginLeft: 8,
+        fontSize: 15,
+        color: COLORS.darkText,
+    },
+    itemCard: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        backgroundColor: COLORS.cardBackground,
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        shadowColor: "#000",
+        shadowOpacity: 0.03,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 6,
+        elevation: 3,
+    },
+    itemName: {
+        fontSize: 16,
+        fontWeight: "600",
+        color: COLORS.darkText,
+    },
+    itemQuantity: {
+        fontSize: 14,
+        color: "#888",
+        marginTop: 4,
+    },
+    itemPrice: {
+        fontSize: 16,
+        fontWeight: "bold",
+        color: COLORS.primary,
+    },
+    emptyText: {
+        marginTop: 30,
+        textAlign: "center",
+        color: "#999",
+        fontStyle: "italic",
+    },
+    headerIcon: {
+        marginRight: 10,
+        color: COLORS.background,
+    },
 });

@@ -36,7 +36,7 @@ export default function ClientHomeScreen() {
 
     const goToCart = () => {
         flash();
-        router.push("/menuCliente/viewOrder/ViewOrderScreen");
+        router.push("/menuCliente/viewOrder/OrderListScreen");
     };
 
     return (
@@ -61,7 +61,7 @@ export default function ClientHomeScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        backgroundColor: COLORS.inputBackground,
         justifyContent: "center",
         alignItems: "center",
         paddingHorizontal: 20,

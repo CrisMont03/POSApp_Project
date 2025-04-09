@@ -118,9 +118,9 @@ export default function ViewMenuScreen() {
     return (
         <View style={styles.container}>
             <Pressable style={styles.backButton} onPress={() => router.back()}>
-                    <Ionicons name="arrow-back" size={24} color="#a0312e" />
-                    <Text style={styles.backText}>Volver</Text>
-                </Pressable>
+                <Ionicons name="arrow-back" size={24} color="#a0312e" />
+                <Text style={styles.backText}>Volver</Text>
+            </Pressable>
                 
             <View style={styles.header}>
                 <TextInput
