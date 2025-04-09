@@ -42,6 +42,11 @@ export default function ClientHomeScreen() {
         router.push("/menuCliente/viewOrder/OrderListScreen");
     };
 
+    const goToQR = () => {
+        flash();
+        router.push("/menuCliente/scan_QR/scan_QRscreen");
+    };
+
     useEffect(() => {
         const fetchUserName = async () => {
             const user = auth.currentUser;
@@ -75,6 +80,10 @@ export default function ClientHomeScreen() {
 
             <Pressable style={[styles.button, isFlashing && styles.flash]} onPress={goToCart}>
                 <Text style={styles.buttonText}>🛒 Ver pedidos</Text>
+            </Pressable>
+
+            <Pressable style={[styles.button, isFlashing && styles.flash]} onPress={goToQR}>
+                <Text style={styles.buttonText}>📷 Escanear QR</Text>
             </Pressable>
 
             <Pressable style={[styles.button, styles.logoutButton]} onPress={handleLogout}>
