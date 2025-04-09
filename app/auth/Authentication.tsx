@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, Pressable, Alert, TouchableOpacity, StyleSheet, SafeAreaView,
-    TouchableWithoutFeedback, KeyboardAvoidingView, Keyboard, Platform} from "react-native";
+    TouchableWithoutFeedback, KeyboardAvoidingView, Keyboard, Platform, Image} from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/authContext/AuthContext";
 import { doc, getDoc } from "firebase/firestore";
@@ -74,6 +74,12 @@ export default function AuthScreen() {
                     style={{ flex: 1 }}
                 >
                     <View style={styles.container}>
+                        {/* Logo centrado arriba */}
+                        <Image
+                            source={require("../../assets/images/elRinconSabanero.png")} // Ajusta la ruta según la ubicación de tu logo
+                            style={styles.logo}
+                            resizeMode="contain"
+                        />
                         <Text style={styles.title}>Bienvenido</Text>
 
                         <Text style={styles.label}>Correo electrónico</Text>
@@ -131,20 +137,26 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         padding: 24,
         backgroundColor: COLORS.background,
-        },
-        title: {
+    },
+    logo: {
+        width: 150, // Ajusta el ancho según el tamaño deseado
+        height: 150, // Ajusta la altura según el tamaño deseado
+        alignSelf: "center", // Centra el logo horizontalmente
+        marginBottom: 20, // Espacio entre el logo y el título
+    },
+    title: {
         fontSize: 26,
         textAlign: "center",
         color: COLORS.primary,
         fontWeight: "bold",
         marginBottom: 32,
-        },
-        label: {
+    },
+    label: {
         fontSize: 16,
         color: COLORS.primary,
         marginBottom: 6,
-        },
-        input: {
+    },
+    input: {
         backgroundColor: COLORS.inputBackground,
         borderRadius: 10,
         padding: 12,
@@ -153,27 +165,27 @@ const styles = StyleSheet.create({
         borderColor: COLORS.accent,
         marginBottom: 16,
         color: COLORS.text,
-        },
-        buttonWrapper: {
+    },
+    buttonWrapper: {
         marginTop: 12,
         borderRadius: 10,
         overflow: "hidden",
-        },
-        button: {
+    },
+    button: {
         backgroundColor: COLORS.primary,
         paddingVertical: 14,
         alignItems: "center",
-        },
-        buttonText: {
+    },
+    buttonText: {
         color: "#fff",
         fontWeight: "600",
         fontSize: 16,
-        },
-        secondaryButton: {
+    },
+    secondaryButton: {
         backgroundColor: COLORS.accent,
         marginTop: 10,
-        },
-        flash: {
-            backgroundColor: "#ff9b8e", // Color que parpadea
-        },
+    },
+    flash: {
+        backgroundColor: "#ff9b8e", // Color que parpadea
+    },
 });
