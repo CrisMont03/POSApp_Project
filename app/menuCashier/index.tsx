@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { auth } from "@/utils/FirebaseConfig";
+import { db, auth } from "@/utils/FirebaseConfig";
 import { signOut } from "firebase/auth";
 import { useRouter } from "expo-router";
+import { useEffect } from "react";
+import { getDoc, doc } from "firebase/firestore";
 
 export default function HomeScreen() {
     const router = useRouter();
     const [isFlashing, setIsFlashing] = useState(false);
+    const [cashierName, setCashierName] = useState("");
 
     const handleLogout = async () => {
         setIsFlashing(true);
@@ -25,9 +28,31 @@ export default function HomeScreen() {
         router.push("/menuCashier/CRUDProducts/ProductListScreen");
     };
 
+    useEffect(() => {
+        const fetchUserName = async () => {
+            const user = auth.currentUser;
+            if (user) {
+                try {
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    if (userDoc.exists()) {
+                        const data = userDoc.data();
+                        setCashierName(data.name); // o data.nombre si así lo guardaste
+                    }
+                } catch (error) {
+                    console.error("Error al obtener el nombre del cashier:", error);
+                }
+            }
+        };
+    
+        fetchUserName();
+    }, []);
+
     return (
         <View style={styles.container}>
-        <Text style={styles.title}>Bienvenido, Administrador</Text>
+        <Text style={styles.titleMain}>Bienvenido, Admin</Text>
+        <Text style={styles.name}>
+            - {cashierName ? `${cashierName}` : "Cargando..."} -
+        </Text>
 
         <Pressable style={[styles.button, isFlashing && styles.flash]}  onPress={goToProducts}>
             <Text style={styles.buttonText}>📋 Administrar productos</Text>
@@ -60,11 +85,18 @@ const styles = StyleSheet.create({
         alignItems: "center",
         paddingHorizontal: 20,
     },
-    title: {
+    titleMain: {
         fontSize: 26,
         fontWeight: "bold",
+        marginBottom: 4,
+        color: COLORS.primary,
+        textAlign: "center",
+    },
+    name: {
+        fontSize: 20,
+        fontWeight: "bold",
         marginBottom: 30,
-        color: "#a0312e",
+        color: COLORS.text,
         textAlign: "center",
     },
     button: {

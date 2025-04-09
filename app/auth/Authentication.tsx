@@ -34,8 +34,6 @@ export default function AuthScreen() {
                     const userData = userSnap.data();
                     const role = userData.role;
 
-                    Alert.alert("Inicio de sesión exitoso", `Bienvenido, rol: ${role}`);
-
                     if (role === "Cliente") router.replace("/menuCliente");
                     else if (role === "Chef") router.replace("/menuChef");
                     else if (role === "Administrador") router.replace("/menuCashier");
