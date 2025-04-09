@@ -1,23 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
-    View,
-    Text,
-    TextInput,
-    Pressable,
-    Alert,
-    StyleSheet,
-    ScrollView,
-    SafeAreaView,
-    TouchableWithoutFeedback,
-    KeyboardAvoidingView,
-    Keyboard,
-    Platform,
+    View, Text, TextInput, Pressable, Alert, StyleSheet, ScrollView, SafeAreaView, TouchableWithoutFeedback,
+    KeyboardAvoidingView, Keyboard, Platform, Image,
 } from "react-native";
 import Slider from "@react-native-community/slider";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { updateProduct } from "@/context/crudContext/CRUDContext";
+import { updateProduct, deleteOldImage } from "@/context/crudContext/CRUDContext";
 import { Ionicons } from "@expo/vector-icons";
 import { Timestamp } from "firebase/firestore";
+import { uploadImage } from "@/utils/supabaseService/UploadService";
+
+import * as ImagePicker from "expo-image-picker";
 
 const EditProductScreen = () => {
     const router = useRouter();
@@ -28,8 +21,14 @@ const EditProductScreen = () => {
     const [description, setDescription] = useState(parsedProduct.description || "");
     const [price, setPrice] = useState(parsedProduct.price || 20000);
     const [category, setCategory] = useState(parsedProduct.category || "");
-    const [imageUrl, setImageUrl] = useState(parsedProduct.imageUrl || "");
     const [isFlashing, setIsFlashing] = useState(false);
+
+    // Guardar la imagen
+    const [imageUri, setImageUri] = useState<string | null>(null);
+    const [imageBase64, setImageBase64] = useState<string | null>(null);
+    const [filename, setFilename] = useState<string | null>(null);
+    const [imageUrl, setImageUrl] = useState(parsedProduct.imageUrl || "");
+    
 
     const handleUpdate = async () => {
         if (!name || !price || !category) {
@@ -41,12 +40,25 @@ const EditProductScreen = () => {
             setIsFlashing(true);
             setTimeout(() => setIsFlashing(false), 2000);
 
+            // Subir la imagen
+            let finalImageUrl = imageUrl;
+
+            if (imageBase64 && filename) {
+                // Eliminar la imagen anterior si existía
+                if (imageUrl) {
+                    await deleteOldImage(imageUrl);
+                }
+                // Subir nueva imagen
+                finalImageUrl = await uploadImage(imageBase64, filename);
+                setImageUrl(finalImageUrl);
+            }
+
             await updateProduct(parsedProduct.id, {
                 name,
                 description,
                 price,
                 category,
-                imageUrl,
+                imageUrl: finalImageUrl,
                 updatedAt: Timestamp.now(),
             });
 
@@ -59,6 +71,71 @@ const EditProductScreen = () => {
     };
 
     const CATEGORIES = ["Desayuno", "Comida", "Cena"];
+
+    const handleSelectImage = () => {
+        Alert.alert(
+            "Seleccionar Imagen",
+            "¿De dónde quieres obtener la imagen?",
+            [
+                {
+                    text: "Cancelar",
+                    style: "cancel",
+                },
+                {
+                    text: "Cámara",
+                    onPress: pickImageFromCamera,
+                },
+                {
+                    text: "Galería",
+                    onPress: pickImageFromGallery,
+                },
+            ]
+        );
+    };
+    
+    const pickImageFromGallery = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 0.8,
+            base64: true,
+        });
+    
+        handleImageResult(result);
+    };
+    
+    const pickImageFromCamera = async () => {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (permission.status !== "granted") {
+            Alert.alert("Permiso denegado", "Se requiere permiso para usar la cámara");
+            return;
+        }
+    
+        const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 0.8,
+            base64: true,
+        });
+    
+        handleImageResult(result);
+    };
+    
+    const handleImageResult = (result: ImagePicker.ImagePickerResult) => {
+        if (!result.canceled && result.assets.length > 0) {
+            const asset = result.assets[0];
+            const uri = asset.uri;
+            const base64 = asset.base64;
+            const mimeType = asset.mimeType || "image/jpeg";
+            const ext = mimeType === "image/png" ? "png" : "jpg";
+            const name = `${Date.now()}_image.${ext}`;
+    
+            setImageUri(uri);
+            setImageBase64(base64 || null);
+            setFilename(name);
+        }
+    };    
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -132,12 +209,26 @@ const EditProductScreen = () => {
                         </View>
 
                         <Text style={styles.label}>Imagen</Text>
-                        <TextInput
-                            placeholder="URL de imagen (opcional)"
-                            value={imageUrl}
-                            onChangeText={setImageUrl}
-                            style={styles.input}
-                        />
+                        {(imageUri || imageUrl) ? (
+                            <View style={{ alignItems: "center", marginVertical: 10 }}>
+                                
+                                <Image
+                                    source={{ uri: imageUri || imageUrl }}
+                                    style={{ width: 300, height: 200, borderRadius: 8 }}
+                                    resizeMode="cover"
+                                />
+                            </View>
+                        ) : null}
+
+                        <Pressable onPress={handleSelectImage} style={[styles.button, { backgroundColor: "#cf665e" }]}>
+                            <Text style={styles.buttonText}>
+                                {imageUrl ? "Cambiar Imagen" : "Subir Imagen"}
+                            </Text>
+                        </Pressable>
+
+                        {imageUrl ? (
+                            <Text style={{ marginTop: 10, fontSize: 12, color: "#666", marginBottom: 15 }}>URL: {imageUrl}</Text>
+                        ) : null}
 
                         <Pressable
                             style={[styles.button, isFlashing && styles.flash]}
@@ -156,6 +247,7 @@ const styles = StyleSheet.create({
     container: {
         padding: 20,
         backgroundColor: "#fff",
+        
     },
     backButton: {
         flexDirection: "row",

@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, Pressable, Alert, TouchableOpacity, StyleSheet, SafeAreaView,
     TouchableWithoutFeedback, KeyboardAvoidingView, Keyboard, Platform} from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/authContext/AuthContext";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/utils/FirebaseConfig";
+import { supabase } from "@/utils/SupabaseConfig";
 
 export default function AuthScreen() {
     const [email, setEmail] = useState("");
@@ -51,6 +52,19 @@ export default function AuthScreen() {
             Alert.alert("Error", "No se pudo iniciar sesión");
         }
     };
+
+    useEffect(() => {
+        const restoreSession = async () => {
+            const { data } = await supabase.auth.getSession();
+            if (!data.session) {
+            console.log("🔴 No hay sesión activa");
+            } else {
+            console.log("🟢 Sesión restaurada:", data.session.user.email);
+            }
+        };
+        
+        restoreSession();
+    }, []);
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>

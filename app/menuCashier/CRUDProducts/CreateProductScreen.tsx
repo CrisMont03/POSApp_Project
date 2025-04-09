@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, Alert, 
+import React, { useState, useEffect } from "react";
+import { View, Text, TextInput, Pressable, StyleSheet, Alert, Image,
     SafeAreaView, TouchableWithoutFeedback, KeyboardAvoidingView, Keyboard, Platform
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -9,70 +9,123 @@ import Slider from "@react-native-community/slider";
 
 import * as ImagePicker from "expo-image-picker";
 import { uploadImage } from "@/utils/supabaseService/UploadService"; // tu servicio supabase
-import * as FileSystem from "expo-file-system";
 
 const CreateProductScreen = () => {
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
     const [price, setPrice] = useState(20000); // Slider inicia en 20000
     const [category, setCategory] = useState("");
-    const [imageUrl, setImageUrl] = useState("");
     const router = useRouter();
     const [isFlashing, setIsFlashing] = useState(false);
+
+    // Guardar la imagen
+    const [imageUri, setImageUri] = useState(""); // URI local de la imagen
+    const [imageUrl, setImageUrl] = useState("");
+    const [imageBase64, setImageBase64] = useState<string | null>(null);
+    const [filename, setFilename] = useState<string | null>(null);
 
     const handleCreate = async () => {
         if (!name || !price || !category) {
             Alert.alert("Campos requeridos", "Nombre, precio y categoría son obligatorios.");
             return;
         }
-
-        const product = {
-            name,
-            description,
-            price: parseFloat(price.toString()),
-            category,
-            imageUrl,
-        };
-
+    
         try {
             setIsFlashing(true);
             setTimeout(() => setIsFlashing(false), 2000);
+    
+            let finalImageUrl = "";
+            if (imageBase64 && filename) {
+                finalImageUrl = await uploadImage(imageBase64, filename); // Subida exitosa
+            }
+    
+            const product = {
+                name,
+                description,
+                price: parseFloat(price.toString()),
+                category,
+                imageUrl: finalImageUrl,
+            };
+    
             await addProduct(product);
             router.back();
         } catch (error) {
             Alert.alert("Error", "No se pudo crear el producto.");
         }
     };
-
+    
     const handleSelectImage = async () => {
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 0.8,
-        });
+        Alert.alert(
+            "Seleccionar imagen",
+            "¿De dónde quieres obtener la imagen?",
+            [
+                {
+                    text: "Cancelar",
+                    style: "cancel",
+                },
+                {
+                    text: "Tomar foto",
+                    onPress: async () => {
+                        const cameraResult = await ImagePicker.launchCameraAsync({
+                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                            allowsEditing: true,
+                            aspect: [4, 3],
+                            quality: 0.8,
+                            base64: true,
+                        });
     
-        if (!result.canceled && result.assets.length > 0) {
-            const asset = result.assets[0];
-            const filename = `${Date.now()}_image.jpg`;
+                        if (!cameraResult.canceled && cameraResult.assets.length > 0) {
+                            const asset = cameraResult.assets[0];
+                            const uri = asset.uri;
+                            const base64 = asset.base64;
+                            const mimeType = asset.mimeType || "image/jpeg";
+                            const ext = mimeType === "image/png" ? "png" : "jpg";
+                            const filename = `${Date.now()}_camera.${ext}`;
     
-            const response = await FileSystem.readAsStringAsync(asset.uri, {
-                encoding: FileSystem.EncodingType.Base64,
-            });
+                            setImageUri(uri);
+                            setImageBase64(base64 || null);
+                            setFilename(filename);
+                        }
+                    },
+                },
+                {
+                    text: "Elegir de la galería",
+                    onPress: async () => {
+                        const galleryResult = await ImagePicker.launchImageLibraryAsync({
+                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                            allowsEditing: true,
+                            aspect: [4, 3],
+                            quality: 0.8,
+                            base64: true,
+                        });
     
-            const blob = new Blob([Uint8Array.from(atob(response), c => c.charCodeAt(0))], {
-                type: "image/jpeg",
-            });
+                        if (!galleryResult.canceled && galleryResult.assets.length > 0) {
+                            const asset = galleryResult.assets[0];
+                            const uri = asset.uri;
+                            const base64 = asset.base64;
+                            const mimeType = asset.mimeType || "image/jpeg";
+                            const ext = mimeType === "image/png" ? "png" : "jpg";
+                            const filename = `${Date.now()}_gallery.${ext}`;
     
-            try {
-                const url = await uploadImage(blob, filename);
-                setImageUrl(url); // este es el URL que se guarda en Firestore
-            } catch (err) {
-                console.error("Error al subir la imagen", err);
-                Alert.alert("Error", "No se pudo subir la imagen");
+                            setImageUri(uri);
+                            setImageBase64(base64 || null);
+                            setFilename(filename);
+                        }
+                    },
+                },
+            ],
+            { cancelable: true }
+        );
+    };    
+
+    useEffect(() => {
+        (async () => {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== "granted") {
+                Alert.alert("Permiso denegado", "Necesitas dar permiso para acceder a la cámara.");
             }
-        }
-    };
+        })();
+    }, []);
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -144,6 +197,16 @@ const CreateProductScreen = () => {
                         </View>
 
                         <Text style={styles.label}>Imagen</Text>
+                        {imageUri ? (
+                            <View style={{ alignItems: "center", marginVertical: 10 }}>
+                                <Image
+                                    source={{ uri: imageUri }}
+                                    style={{ width: 300, height: 200, borderRadius: 10 }}
+                                    resizeMode="cover"
+                                />
+                            </View>
+                        ) : null}
+
                         <Pressable style={styles.button} onPress={handleSelectImage}>
                             <Text style={styles.buttonText}>
                                 {imageUrl ? "Imagen seleccionada" : "Seleccionar imagen"}

@@ -1,18 +1,36 @@
 import { supabase } from "@/utils/SupabaseConfig";
+import { decode } from "base64-arraybuffer";
 
-export const uploadImage = async (file: Blob, filename: string) => {
-    const { data, error } = await supabase.storage
-        .from("products") // tu bucket
-        .upload(`images/${filename}`, file, {
-            contentType: "image/jpeg", // o el tipo que necesites
-            upsert: true,
-        });
+// Como Expo no usa APIs nativas como Blob directamente, uso base64 para enviar la información de la imagen y despues
+// convertirla de vuelta a binario (Uint8Array) para poder subirla a Supabase u otros servidores.
 
-    if (error) throw error;
+export const uploadImage = async (base64: string, filename: string, contentType = "image/jpeg") => {
+    try {
+        // Elimina encabezado si lo hay
+        const cleanedBase64 = base64.replace(/^data:image\/\w+;base64,/, "");
 
-    const { data: publicUrlData } = supabase.storage
-        .from("products")
-        .getPublicUrl(`images/${filename}`);
+        // Decodifica base64 a ArrayBuffer
+        const arrayBuffer = decode(cleanedBase64);
+        const uint8Array = new Uint8Array(arrayBuffer);
 
-    return publicUrlData.publicUrl;
+        const { data, error } = await supabase.storage
+            .from("images")
+            .upload(filename, uint8Array, {
+                contentType,
+                upsert: true,
+            });
+
+        if (error) throw error;
+
+        const { data: publicUrlData } = supabase.storage
+            .from("images")
+            .getPublicUrl(filename);
+
+        console.log("Imagen subida correctamente");
+        return publicUrlData?.publicUrl || "";
+    } catch (error) {
+        console.error("Error al subir la imagen:", error);
+        throw error;
+    }
 };
+
