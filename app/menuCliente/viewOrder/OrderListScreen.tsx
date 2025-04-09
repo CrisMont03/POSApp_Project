@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable, TouchableOpacity } from "react-native";
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy, onSnapshot } from "firebase/firestore";
 import { db, auth } from "@/utils/FirebaseConfig";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -11,7 +11,7 @@ const STATUS_STEPS = [
     "Listo para recoger",
     "Entregado",
     "Listo para pagar",
-    ];
+];
 
     const STATUS_ICONS: Record<string, any> = {
     "Pedido": "receipt-outline",
@@ -19,69 +19,84 @@ const STATUS_STEPS = [
     "Listo para recoger": "walk-outline",
     "Entregado": "checkmark-done-outline",
     "Listo para pagar": "card-outline",
-    };
+};
 
-    export default function OrderListScreen() {
+export default function OrderListScreen() {
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const user = auth.currentUser;
     const router = useRouter();
 
     useEffect(() => {
-        fetchOrders();
-    }, []);
-
-    const fetchOrders = async () => {
         if (!user) return;
-        try {
+    
         const q = query(
             collection(db, "cart"),
             where("userId", "==", user.uid),
             orderBy("timestamp", "asc")
         );
-        const querySnapshot = await getDocs(q);
-        const data: any[] = [];
-        querySnapshot.forEach((doc) => {
-            data.push({ id: doc.id, ...doc.data() });
+    
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const updatedOrders = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+            }));
+            setOrders(updatedOrders);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error in real-time listener: ", error);
+            setLoading(false);
         });
-        setOrders(data);
-        } catch (error) {
-        console.error("Error fetching orders: ", error);
-        } finally {
-        setLoading(false);
-        }
-    };
+    
+        return () => unsubscribe(); // se limpia al desmontar
+    }, []);    
 
     const getStatusStep = (status: string) => STATUS_STEPS.indexOf(status);
 
-    const renderProgressBar = (status: string) => {
+    const renderProgressBar = (status: string, statusHistory: any) => {
         const currentStep = getStatusStep(status);
         return (
-        <View style={styles.progressContainer}>
-            {STATUS_STEPS.map((step, index) => (
-            <View key={step} style={styles.stepContainer}>
-                <Ionicons
-                name={STATUS_ICONS[step]}
-                size={18}
-                color={index <= currentStep ? COLORS.primary : "#ccc"}
-                style={styles.icon}
-                />
-                <Text style={[styles.stepLabel, { color: index <= currentStep ? COLORS.primary : "#aaa" }]}>
-                {step}
-                </Text>
-                {index < STATUS_STEPS.length - 1 && (
-                <View
-                    style={[
-                    styles.line,
-                    { backgroundColor: index < currentStep ? COLORS.primary : "#ccc" },
-                    ]}
-                />
-                )}
+            <View style={styles.progressContainer}>
+                {STATUS_STEPS.map((step, index) => {
+                    const timestamp = statusHistory?.[step]?.timestamp?.toDate?.();
+                    const formattedTime = timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null;
+    
+                    return (
+                        <View key={step} style={styles.stepContainer}>
+                            <Ionicons
+                                name={STATUS_ICONS[step]}
+                                size={18}
+                                color={index <= currentStep ? COLORS.primary : "#ccc"}
+                                style={styles.icon}
+                            />
+                            <View>
+                                <Text style={[
+                                    styles.stepLabel,
+                                    { color: index <= currentStep ? COLORS.primary : "#aaa" }
+                                ]}>
+                                    {step}
+                                </Text>
+                                {formattedTime && (
+                                    <Text style={styles.stepTime}>
+                                        {formattedTime}
+                                    </Text>
+                                )}
+                            </View>
+                            {index < STATUS_STEPS.length - 1 && (
+                                <View
+                                    style={[
+                                        styles.line,
+                                        { backgroundColor: index < currentStep ? COLORS.primary : "#ccc" },
+                                    ]}
+                                />
+                            )}
+                        </View>
+                    );
+                })}
             </View>
-            ))}
-        </View>
         );
     };
+    
 
     if (loading) {
         return (
@@ -127,7 +142,7 @@ const STATUS_STEPS = [
                         <Text style={styles.timestamp}>
                         Fecha: {new Date(item.timestamp?.toDate?.()).toLocaleString()}
                         </Text>
-                        {renderProgressBar(item.status)}
+                        {renderProgressBar(item.status, item.statusHistory)}
                     </View>
                 </TouchableOpacity>
             )}
@@ -236,4 +251,9 @@ const styles = StyleSheet.create({
         height: 2,
         width: 16,
     },
+    stepTime: {
+        fontSize: 9,
+        color: "#999",
+        marginTop: 2,
+    },    
 });

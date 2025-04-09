@@ -18,6 +18,8 @@ import { useAuth } from "@/context/authContext/AuthContext";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import * as Haptics from 'expo-haptics';
+import { auth, db } from "@/utils/FirebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
 
 const RegisterScreen = () => {
     const { register } = useAuth();
@@ -50,11 +52,33 @@ const RegisterScreen = () => {
         }
 
         const success = await register(form);
-        if (success) {
-        Alert.alert("Éxito", "Usuario registrado correctamente");
-        router.replace("/home");
+        if (success && auth.currentUser) {
+            Alert.alert("Éxito", "Usuario registrado correctamente");
+            try {
+                const uid = auth.currentUser.uid;
+                const userRef = doc(db, "users", uid);
+                const userSnap = await getDoc(userRef);
+
+                if (userSnap.exists()) {
+                    const userData = userSnap.data();
+                    const role = userData.role;
+
+                    Alert.alert("Inicio de sesión exitoso", `Bienvenido, rol: ${role}`);
+
+                    if (role === "Cliente") router.replace("/menuCliente");
+                    else if (role === "Chef") router.replace("/menuChef");
+                    else if (role === "Administrador") router.replace("/menuCashier");
+                    else Alert.alert("Error", "Rol no reconocido");
+
+                } else {
+                    Alert.alert("Error", "No se encontró información del usuario");
+                }
+            } catch (err) {
+                console.error("Error al obtener datos del usuario:", err);
+                Alert.alert("Error", "Hubo un problema al obtener tus datos");
+            }
         } else {
-        Alert.alert("Error", "No se pudo registrar el usuario");
+            Alert.alert("Error", "No se pudo registrar el usuario");
         }
     };
 

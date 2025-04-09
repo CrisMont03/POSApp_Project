@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, FlatList, Pressable } from "react-native";
+import { View, Text, StyleSheet, FlatList, Pressable, Image } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { BadgeCheck, Clock, CalendarDays, ShoppingCart } from "lucide-react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,9 +20,13 @@ export default function ViewOrderScreen() {
     const getStatusIcon = (status: string) => {
         switch (status.toLowerCase()) {
             case "entregado":
-                return <BadgeCheck size={20} color={COLORS.primary} />;
-            case "pendiente":
+                return <BadgeCheck size={20} color="#008f39" />;
+            case "cocinando":
                 return <Clock size={20} color="#ffb300" />;
+            case "listo para recoger":
+                return <Clock size={20} color="#ffb300" />;
+            case "listo para pagar":
+                return <BadgeCheck size={20} color="#008f39" />;
             default:
                 return <ShoppingCart size={20} color={COLORS.primary} />;
         }
@@ -45,7 +49,7 @@ export default function ViewOrderScreen() {
                 <Text style={styles.infoText}>Estado: {parsedOrder.status}</Text>
             </View>
 
-            <View style={styles.infoRow}>
+            <View style={styles.infoRow2}>
                 <CalendarDays size={20} color={COLORS.primary} />
                 <Text style={styles.infoText}>
                     {new Date(parsedOrder.timestamp.seconds * 1000).toLocaleString()}
@@ -53,23 +57,26 @@ export default function ViewOrderScreen() {
             </View>
 
             <FlatList
-                data={parsedOrder.items}
-                keyExtractor={(_, index) => index.toString()}
-                contentContainerStyle={{ paddingTop: 10 }}
-                renderItem={({ item }) => (
-                    <View style={styles.itemCard}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.itemName}>{item.name}</Text>
-                            <Text style={styles.itemQuantity}>Cantidad: {item.quantity}</Text>
-                        </View>
-                        <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
-                    </View>
+            data={parsedOrder.items}
+            keyExtractor={(item, index) => item.id + index}
+            renderItem={({ item }) => (
+                <View style={styles.productCard}>
+                {item.imageUrl && (
+                    <Image source={{ uri: item.imageUrl }} style={styles.image} />
                 )}
-                ListEmptyComponent={
-                    <Text style={styles.emptyText}>
-                        Este pedido no tiene productos.
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.name}>{item.name}</Text>
+                    <Text style={styles.details}>Cantidad: {item.quantity}</Text>
+                    <Text style={styles.details}>
+                    Precio unitario: ${item.price}
                     </Text>
-                }
+                    <Text style={styles.subtotal}>
+                    Subtotal: ${item.quantity * item.price}
+                    </Text>
+                </View>
+                </View>
+            )}
+            contentContainerStyle={{ paddingBottom: 20 }}
             />
         </View>
     );
@@ -112,6 +119,11 @@ const styles = StyleSheet.create({
         alignItems: "center",
         marginBottom: 8,
     },
+    infoRow2: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 15,
+    },
     infoText: {
         marginLeft: 8,
         fontSize: 15,
@@ -139,6 +151,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: "#888",
         marginTop: 4,
+        marginBottom: 4,
     },
     itemPrice: {
         fontSize: 16,
@@ -154,5 +167,37 @@ const styles = StyleSheet.create({
     headerIcon: {
         marginRight: 10,
         color: COLORS.background,
+    },
+    productCard: {
+        backgroundColor: COLORS.cardBackground,
+        borderRadius: 10,
+        flexDirection: "row",
+        gap: 12,
+        padding: 12,
+        marginBottom: 12,
+        alignItems: "center",
+        elevation: 1,
+    },
+    image: {
+        width: 64,
+        height: 64,
+        borderRadius: 8,
+        resizeMode: "cover"
+    },
+    name: {
+        fontSize: 16,
+        fontWeight: "600",
+        color: COLORS.primary,
+        marginBottom: 5
+    },
+    details: {
+        fontSize: 13,
+        color: "#555",
+    },
+    subtotal: {
+        fontSize: 13,
+        fontWeight: "500",
+        marginTop: 4,
+        color: "#222",
     },
 });

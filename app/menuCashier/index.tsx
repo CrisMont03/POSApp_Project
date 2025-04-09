@@ -30,7 +30,7 @@ export default function HomeScreen() {
         <Text style={styles.title}>Bienvenido, Administrador</Text>
 
         <Pressable style={[styles.button, isFlashing && styles.flash]}  onPress={goToProducts}>
-            <Text style={styles.buttonText}>📋 Ver productos</Text>
+            <Text style={styles.buttonText}>📋 Administrar productos</Text>
         </Pressable>
 
         <Pressable 

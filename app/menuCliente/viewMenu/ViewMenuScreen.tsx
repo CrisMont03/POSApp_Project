@@ -93,6 +93,12 @@ export default function ViewMenuScreen() {
                 items: cart,
                 status: "Pedido",
                 timestamp: new Date(),
+                statusHistory: [
+                    {
+                        status: "Pedido",
+                        timestamp: new Date()
+                    }
+                ]
             });
             Alert.alert("Éxito", "Tu pedido ha sido enviado.");
             setCart([]);
