@@ -8,7 +8,7 @@ import {
     Pressable,
     Alert,
 } from "react-native";
-import { collection, getDocs, query, orderBy, updateDoc, doc, getDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, updateDoc, doc, getDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { db } from "@/utils/FirebaseConfig";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -36,13 +36,9 @@ export default function OrdersReceivedScreen() {
     const router = useRouter();
 
     useEffect(() => {
-        fetchOrders();
-    }, []);
-
-    const fetchOrders = async () => {
-        try {
-            const q = query(collection(db, "cart"), orderBy("timestamp", "asc"));
-            const querySnapshot = await getDocs(q);
+        const q = query(collection(db, "cart"), orderBy("timestamp", "asc"));
+    
+        const unsubscribe = onSnapshot(q, async (querySnapshot) => {
             const data: any[] = [];
     
             for (const docSnap of querySnapshot.docs) {
@@ -66,17 +62,17 @@ export default function OrdersReceivedScreen() {
                 data.push({
                     id: docSnap.id,
                     ...orderData,
-                    customerName, // Agregamos el nombre del cliente
+                    customerName,
                 });
             }
     
             setOrders(data);
-        } catch (error) {
-            console.error("Error fetching orders: ", error);
-        } finally {
             setLoading(false);
-        }
-    };
+        });
+    
+        // Limpiar suscripción al desmontar el componente
+        return () => unsubscribe();
+    }, []);    
 
     const updateOrderStatus = async (orderId: string, newStatus: string) => {
         try {
@@ -134,6 +130,9 @@ export default function OrdersReceivedScreen() {
                     <Text style={styles.customerName}>
                         Cliente: {item.customerName}
                     </Text>
+
+                    {/* 👇 Aquí agregas el ID de mesa */}
+                    <Text style={styles.tableId}>Mesa: {item.mesaId || "No asignada"}</Text>
 
                     <StatusStepper
                         currentStatus={item.status}
@@ -252,4 +251,9 @@ const styles = StyleSheet.create({
         marginTop: 4,
         marginLeft: 2, // para alinear con el título
     },
+    tableId: {
+        fontSize: 14,
+        color: "#444",
+        marginTop: 4,
+    },    
 });

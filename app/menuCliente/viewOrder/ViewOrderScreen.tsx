@@ -32,6 +32,12 @@ export default function ViewOrderScreen() {
         }
     };
 
+    // Agrega esto justo antes del return
+    const subtotal = parsedOrder.items.reduce((acc: number, item: { quantity: number; price: number; }) => acc + item.quantity * item.price, 0);
+    const taxRate = 0.16; // 16% de IVA
+    const taxAmount = subtotal * taxRate;
+    const totalAmount = subtotal + taxAmount;
+
     return (
         <View style={styles.container}>
             <Pressable style={styles.backButton} onPress={() => router.back()}>
@@ -78,6 +84,14 @@ export default function ViewOrderScreen() {
             )}
             contentContainerStyle={{ paddingBottom: 20 }}
             />
+
+            <View style={styles.totalContainer}>
+                <Ionicons name="card-outline" size={24} color={COLORS.primary} style={styles.totalIcon} />
+                <Text style={styles.totalText}>Total a pagar:</Text>
+                <Text style={styles.miniText}>+ Impuestos: 16%</Text>
+                <Text style={styles.totalAmount}>${totalAmount.toFixed(2)}</Text>
+            </View>
+
         </View>
     );
 }
@@ -200,4 +214,41 @@ const styles = StyleSheet.create({
         marginTop: 4,
         color: "#222",
     },
+    totalContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginTop: 20,
+        marginBottom: 20,
+        padding: 16,
+        backgroundColor: "#ffeceb",
+        borderRadius: 12,
+        elevation: 4,
+        shadowColor: "#000",
+        shadowOpacity: 0.1,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 4,
+    },
+    totalIcon: {
+        marginRight: 10,
+    },
+    totalText: {
+        fontSize: 18,
+        fontWeight: "600",
+        color: COLORS.primary,
+        flex: 1,
+        marginBottom: 10
+    },
+    miniText: {
+        fontSize: 8,
+        fontWeight: "600",
+        color: 'gray',
+        right: 132,
+        marginTop: 22
+    },
+    totalAmount: {
+        fontSize: 20,
+        fontWeight: "bold",
+        color: "#333",
+    },    
 });

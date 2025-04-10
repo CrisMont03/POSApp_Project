@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable, TouchableOpacity } from "react-native";
-import { collection, getDocs, query, where, orderBy, onSnapshot } from "firebase/firestore";
-import { db, auth } from "@/utils/FirebaseConfig";
+import { View, Text, FlatList, ActivityIndicator, StyleSheet, Pressable } from "react-native";
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { db } from "@/utils/FirebaseConfig";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
@@ -11,33 +11,32 @@ const STATUS_STEPS = [
     "Listo para recoger",
     "Entregado",
     "Listo para pagar",
+    "Pagado",
 ];
 
-    const STATUS_ICONS: Record<string, any> = {
+const STATUS_ICONS: Record<string, any> = {
     "Pedido": "receipt-outline",
     "Cocinando": "restaurant-outline",
     "Listo para recoger": "walk-outline",
     "Entregado": "checkmark-done-outline",
     "Listo para pagar": "card-outline",
+    "Pagado": "checkmark-circle-outline",
 };
 
-export default function OrderListScreen() {
+const COLORS = {
+    primary: "#a0312e",
+    darkText: "#333",
+    background: "#fff5f4",
+    cardBackground: "#fff",
+};
+
+export default function ViewHistory() {
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const user = auth.currentUser;
     const router = useRouter();
 
     useEffect(() => {
-        if (!user) return;
-    
-        const q = query(
-            collection(db, "cart"),
-            where("userId", "==", user.uid),
-            where("status", "!=", "Pagado"), // Excluir pedidos pagados
-            orderBy("status"), // Firestore requiere un orderBy en consultas con where "!="
-            orderBy("timestamp", "asc")
-        );
-    
+        const q = query(collection(db, "ordersHistory"), orderBy("timestamp", "desc"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const updatedOrders = snapshot.docs.map((doc) => ({
                 id: doc.id,
@@ -45,15 +44,23 @@ export default function OrderListScreen() {
             }));
             setOrders(updatedOrders);
             setLoading(false);
-        }, (error) => {
-            console.error("Error in real-time listener: ", error);
-            setLoading(false);
         });
-    
-        return () => unsubscribe(); // se limpia al desmontar
-    }, []);    
+
+        return () => unsubscribe();
+    }, []);
 
     const getStatusStep = (status: string) => STATUS_STEPS.indexOf(status);
+
+    const calculateTotal = (productos: any[]) => {
+        if (!productos || !Array.isArray(productos)) return 0;
+        const subtotal = productos.reduce((acc, prod) => {
+            const precio = parseFloat(prod.price || 0);
+            const cantidad = parseInt(prod.quantity || 1);
+            return acc + (precio * cantidad);
+        }, 0);
+        const totalConImpuestos = subtotal * 1.16; // Sumamos el 16% de IVA
+        return totalConImpuestos;
+    };
 
     const renderProgressBar = (status: string, statusHistory: any) => {
         const currentStep = getStatusStep(status);
@@ -62,7 +69,7 @@ export default function OrderListScreen() {
                 {STATUS_STEPS.map((step, index) => {
                     const timestamp = statusHistory?.[step]?.timestamp?.toDate?.();
                     const formattedTime = timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null;
-    
+
                     return (
                         <View key={step} style={styles.stepContainer}>
                             <Ionicons
@@ -79,9 +86,7 @@ export default function OrderListScreen() {
                                     {step}
                                 </Text>
                                 {formattedTime && (
-                                    <Text style={styles.stepTime}>
-                                        {formattedTime}
-                                    </Text>
+                                    <Text style={styles.stepTime}>{formattedTime}</Text>
                                 )}
                             </View>
                             {index < STATUS_STEPS.length - 1 && (
@@ -98,71 +103,61 @@ export default function OrderListScreen() {
             </View>
         );
     };
-    
 
     if (loading) {
         return (
-        <View style={styles.centered}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
+            <View style={styles.centered}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+            </View>
         );
     }
 
     return (
         <View style={styles.container}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#a0312e" />
-            <Text style={styles.backText}>Volver</Text>
-        </Pressable>
+            <Pressable style={styles.backButton} onPress={() => router.back()}>
+                <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
+                <Text style={styles.backText}>Volver</Text>
+            </Pressable>
 
-        <View style={styles.header}>
-            <Ionicons name="list-circle-outline" size={30} color={COLORS.primary} style={styles.headerIcon} />
-            <Text style={styles.title}>Mis Pedidos</Text>
-        </View>
-        <FlatList
-            data={orders}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ paddingBottom: 20 }}
-            renderItem={({ item, index }) => (
-                <TouchableOpacity
-                    onPress={() => router.push({
-                        pathname: "/menuCliente/viewOrder/ViewOrderScreen",
-                        params: { order: JSON.stringify(item) }, // pasamos el pedido como string
-                    })}
-                >
-                    <View style={styles.orderCard}>
+            <View style={styles.header}>
+                <Ionicons name="checkmark-circle-outline" size={30} color={COLORS.background} style={styles.headerIcon} />
+                <Text style={styles.title}>Pedidos Pagados</Text>
+            </View>
+
+            <FlatList
+                data={orders}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{ paddingBottom: 20 }}
+                renderItem={({ item, index }) => (
+                    <Pressable
+                        style={styles.orderCard}
+                        onPress={() => router.push({
+                            pathname: "/menuCashier/viewOrders/ViewOrderScreenAdmin",
+                            params: { order: JSON.stringify(item) },
+                        })}
+                    >
                         <Text style={styles.orderTitle}>Pedido #{index + 1}</Text>
                         <View style={styles.statusRow}>
-                        <Ionicons
-                            name={STATUS_ICONS[item.status] || "help-outline"}
-                            size={18}
-                            color={COLORS.primary}
-                            style={{ marginRight: 6 }}
-                        />
-                        <Text style={styles.orderSubtitle}>Estado actual: {item.status}</Text>
+                            <Ionicons
+                                name={STATUS_ICONS[item.status] || "help-outline"}
+                                size={18}
+                                color={COLORS.primary}
+                                style={{ marginRight: 6 }}
+                            />
+                            <Text style={styles.orderSubtitle}>Estado: {item.status}</Text>
                         </View>
-
-                        {/* 👇 Aquí agregas el ID de mesa */}
                         <Text style={styles.tableId}>Mesa: {item.mesaId || "No asignada"}</Text>
-
+                        <Text style={styles.totalText}>Total: ${calculateTotal(item.items).toFixed(2)}</Text>
                         <Text style={styles.timestamp}>
                             Fecha: {new Date(item.timestamp?.toDate?.()).toLocaleString()}
                         </Text>
                         {renderProgressBar(item.status, item.statusHistory)}
-                    </View>
-                </TouchableOpacity>
-            )}
-        />
+                    </Pressable>
+                )}
+            />
         </View>
     );
 }
-
-const COLORS = {
-    primary: "#a0312e",
-    darkText: "#333",
-    background: "#fff5f4",
-    cardBackground: "#fff",
-};
 
 const styles = StyleSheet.create({
     container: {
@@ -188,11 +183,10 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         marginBottom: 20,
-        borderRadius: 10
+        borderRadius: 10,
     },
     headerIcon: {
         marginRight: 10,
-        color: COLORS.background,
     },
     title: {
         fontSize: 26,
@@ -231,6 +225,11 @@ const styles = StyleSheet.create({
         marginTop: 6,
         marginBottom: 12,
     },
+    tableId: {
+        fontSize: 14,
+        color: "#444",
+        marginTop: 4,
+    },
     statusRow: {
         flexDirection: "row",
         alignItems: "center",
@@ -262,9 +261,10 @@ const styles = StyleSheet.create({
         color: "#999",
         marginTop: 2,
     },
-    tableId: {
-        fontSize: 14,
-        color: "#444",
-        marginTop: 4,
-    },    
+    totalText: {
+        fontSize: 15,
+        fontWeight: "bold",
+        color: "#000",
+        marginTop: 6,
+    },
 });

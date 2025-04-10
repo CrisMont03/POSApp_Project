@@ -28,6 +28,11 @@ export default function HomeScreen() {
         router.push("/menuCashier/CRUDProducts/ProductListScreen");
     };
 
+    const goToOrders = () => {
+        console.log("Botón presionado");
+        router.push("/menuCashier/viewOrders/ViewAllOrdersScreen");
+    };
+
     useEffect(() => {
         const fetchUserName = async () => {
             const user = auth.currentUser;
@@ -56,6 +61,10 @@ export default function HomeScreen() {
 
         <Pressable style={[styles.button, isFlashing && styles.flash]}  onPress={goToProducts}>
             <Text style={styles.buttonText}>📋 Administrar productos</Text>
+        </Pressable>
+
+        <Pressable style={[styles.button, isFlashing && styles.flash]}  onPress={goToOrders}>
+            <Text style={styles.buttonText}>✉️ Ver pedidos</Text>
         </Pressable>
 
         <Pressable 

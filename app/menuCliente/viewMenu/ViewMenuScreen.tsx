@@ -16,6 +16,7 @@ import { collection, getDocs, addDoc } from "firebase/firestore";
 import { db, auth } from "@/utils/FirebaseConfig";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface Product {
     id: string;
@@ -88,9 +89,12 @@ export default function ViewMenuScreen() {
     const confirmOrder = async () => {
         if (!user) return;
         try {
+            const mesaId = await AsyncStorage.getItem("mesaId");
+    
             await addDoc(collection(db, "cart"), {
                 userId: user.uid,
                 items: cart,
+                mesaId: mesaId || "No asignada", // fallback si no hay QR
                 status: "Pedido",
                 timestamp: new Date(),
                 statusHistory: [
@@ -100,7 +104,7 @@ export default function ViewMenuScreen() {
                     }
                 ]
             });
-            Alert.alert("Éxito", "Tu pedido ha sido enviado.");
+            Alert.alert("Éxito", `Tu pedido ha sido enviado${mesaId ? ` desde la mesa ${mesaId}` : ""}`);
             setCart([]);
             setCartModalVisible(false);
         } catch (error) {
