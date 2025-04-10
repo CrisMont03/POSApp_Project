@@ -38,6 +38,7 @@ export default function ViewAllOrdersScreen() {
 
     const router = useRouter();
 
+
     useEffect(() => {
         const q = query(collection(db, "cart"), orderBy("timestamp", "desc"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
